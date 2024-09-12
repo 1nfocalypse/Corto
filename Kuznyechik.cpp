@@ -101,13 +101,15 @@ BinNum Kuznyechik::pBox(BinNum number) { // R in Kuz spec
 }
 
 BinNum Kuznyechik::pBoxInv(BinNum number) { // R^-1 in Kuz spec
-    BinNum numberCopy(number);
-    BinNum one128("1", 128);
-    BinNum two128("10", 128);
-    BinNum initial(number >> (15 * 8));
-    numberCopy = (numberCopy << 8) & ((two128 << 126) - one128); // may be incorrect
-    BinNum linRet128 = BinNum(std::bitset<8>(linearFunct(numberCopy ^ initial)).to_string(), 128);
-    return numberCopy ^ linRet128;
+    BinNum numberCopy(number.getVal(), 129);
+    BinNum one128("1", 129);
+    BinNum two128("10", 129);
+    BinNum initial((number >> (15 * 8)).getVal(), 129);
+    numberCopy = (numberCopy << 8) & ((two128 << 127) - one128); // may be incorrect
+    BinNum toXor((numberCopy ^ initial).getVal().substr(1,128));
+    BinNum linRet128 = BinNum(std::bitset<8>(linearFunct(toXor)).to_string(), 128); // needs to get cast down here before being sent to linear funct
+    BinNum chopped(numberCopy.getVal().substr(1, 128));
+    return (chopped ^ linRet128);
 }
 
 uint8_t Kuznyechik::linearFunct(BinNum number) {
@@ -127,18 +129,29 @@ uint8_t Kuznyechik::linearFunct(BinNum number) {
 }
 
 uint8_t Kuznyechik::kuzMult(uint8_t x, uint8_t y) {
-    uint8_t toMod = multBinPolys(x, y);
-    BinNum modulus("111000011"); // 111000011 -> x^7 + x^6 + x^5 + x + 1
-    return modBinPolys(toMod, modulus);
+    // cast these to BinNum, allocate 128 bits
+    // then have mult return a 128 bit binNum
+    // modBin then needs changes to accept two BinNums
+    // then KuzMult needs to mask the last 8 bits
+    // and return that
+    // we exclusively work with 128 bits internally
+    BinNum xBin(std::bitset<8>(x).to_string(), 128);
+    BinNum yBin(std::bitset<8>(y).to_string(), 128);
+    BinNum toMod = multBinPolys(xBin, yBin);
+    BinNum modulus("111000011", 128); // 111000011 -> x^7 + x^6 + x^5 + x + 1
+    BinNum retVal = modBinPolys(toMod, modulus);
+    // convert BinNum to uint8
+    uint8_t castRetVal = std::stoul(retVal.getVal(10)) & 0xFF;
+    return castRetVal;
 }
 
-uint8_t Kuznyechik::multBinPolys(uint8_t x, uint8_t y) {
-    if (x == 0 || y == 0) {
-        return 0;
+BinNum Kuznyechik::multBinPolys(BinNum x, BinNum y) {
+    if (x.getVal(10) == "0" || y.getVal(10) == "0") {
+        return BinNum("0", 128);
     }
-    uint8_t retNum = 0;
-    while (x != 0) {
-        if ((x & 1) == 1) {
+    BinNum retNum("0", 128);
+    while (x.getVal(10) != "0") {
+        if ((x & BinNum("1", 128)) == BinNum("1", 128)) {
             retNum = retNum ^ y;
         }
         y = y << 1;
@@ -150,22 +163,23 @@ uint8_t Kuznyechik::multBinPolys(uint8_t x, uint8_t y) {
     #pragma warning(pop)
 }
 
-uint8_t Kuznyechik::modBinPolys(uint8_t x, BinNum y) {
+// infinite loop because nb1 is not updating?
+BinNum Kuznyechik::modBinPolys(BinNum x, BinNum y) {
     uint8_t numBits = curBits(y);
     while (1) {
         uint8_t numBits2 = curBits(x);
         if (numBits2 < numBits) {
             return x;
         }
-        uint8_t modShift = static_cast<uint8_t>(std::stoul((y << (numBits - numBits2)).getVal(10)));
+        BinNum modShift = (y << (numBits2 - numBits));
         x = x ^ modShift;
     }
 }
 
 uint8_t Kuznyechik::curBits(BinNum number) {
     uint8_t retNum = 0;
-    BinNum zero9("0", 9);
-    while (number != zero9) {
+    BinNum zero128("0", 128);
+    while (number != zero128) {
         ++retNum;
         number = number >> 1;
     }
@@ -185,16 +199,18 @@ std::vector<BinNum> Kuznyechik::keyScheduler(BinNum number) {
     std::vector<BinNum> keys;
     BinNum one256("1", 256);
     BinNum two256("10", 256);
-    BinNum key1 = number >> 128;
-    BinNum key2 = number & ((two256 << 126) - one256);
+    // gonna have to find out how ot systemically turn these into 128 bit keys before sending them to pBoxWrapper and sBox
+    BinNum key1 = BinNum(((number >> 128) & BinNum("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", 256, 16)).getVal().substr(128, 128));
+    BinNum key2 = BinNum((number & (((two256 << 127) - one256))).getVal().substr(128, 128));
     keys.push_back(key1);
     keys.push_back(key2);
     for (uint8_t i = 0; i < 4; ++i) {
         for (uint8_t j = 0; j < 8; ++j) {
             uint8_t xorModArg = 8 * i + j + 1; // will never exceed 32
-            BinNum xorModifier = pBoxWrapper(BinNum(std::bitset<8>(xorModArg).to_string(), 256)); // verify compliance with input
+            BinNum xorModifier = pBoxWrapper(BinNum(std::bitset<8>(xorModArg).to_string(), 128)); // verify compliance with input
+            BinNum key1Prev(key1);
             key1 = pBoxWrapper(sBox(key1 ^ xorModifier)) ^ key2;
-            key2 = key1;
+            key2 = key1Prev;
         }
         keys.push_back(key1);
         keys.push_back(key2);
@@ -205,7 +221,7 @@ std::vector<BinNum> Kuznyechik::keyScheduler(BinNum number) {
 BinNum Kuznyechik::encrypt(BinNum plaintext, BinNum key) {
     std::vector<BinNum> keys = keyScheduler(key);
     BinNum ptCopy(plaintext);
-    for (uint32_t i = 0; i < 10; ++i) {
+    for (uint32_t i = 0; i < 9; ++i) {
         ptCopy = pBoxWrapper(sBox(ptCopy ^ keys[i]));
     }
     return ptCopy ^ keys.back();
@@ -215,8 +231,8 @@ BinNum Kuznyechik::decrypt(BinNum ciphertext, BinNum key) {
     std::vector<BinNum> keys = keyScheduler(key);
     BinNum ctCopy(ciphertext);
     std::reverse(keys.begin(), keys.end());
-    for (uint32_t i = 0; i < 10; ++i) {
-        ctCopy = pBoxInvWrapper(sBoxInv(ctCopy ^ keys[i]));
+    for (uint32_t i = 0; i < 9; ++i) {
+        ctCopy = sBoxInv(pBoxInvWrapper(ctCopy ^ keys[i]));
     }
     return ctCopy ^ keys.back();
 }

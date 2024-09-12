@@ -1,5 +1,6 @@
 #include "Magma.h"
 #include <bitset>
+#include <algorithm>
 
 uint32_t Magma::substitution(uint32_t value) {
 	uint64_t y = 0;
@@ -34,7 +35,7 @@ std::vector<uint32_t> Magma::split(uint64_t value) {
 
 uint64_t Magma::join(uint32_t left, uint32_t right) {
 	uint64_t leftCpy = left;
-	leftCpy << 32;
+	leftCpy = leftCpy << 32;
 	leftCpy = leftCpy ^ right;
 	return leftCpy;
 }
@@ -53,16 +54,38 @@ std::vector<uint32_t> Magma::keyGen(BinNum key) {
 			keys.push_back(keys[j]);
 		}
 	}
-	for (int i = 8; i >= 0; --i) {
+	for (int i = 7; i >= 0; --i) {
 		keys.push_back(keys[i]);
 	}
 	return keys;
 }
 
 uint64_t Magma::encrypt(uint64_t plaintext, BinNum key) {
-	return 0;
+	std::vector<uint32_t> keys = keyGen(key);
+	std::vector<uint32_t> seperated = split(plaintext);
+	// 32 rounds of feistel network
+	uint32_t left = seperated[0];
+	uint32_t right = seperated[1];
+	for (uint32_t i = 0; i < 31; ++i) {
+		uint32_t newL = right;
+		uint32_t newR = left ^ rotation(right, keys[i]);
+		left = newL;
+		right = newR;
+	}
+	return join(left ^ rotation(right, keys[31]), right);
 }
 
 uint64_t Magma::decrypt(uint64_t ciphertext, BinNum key) {
-	return 0;
+	std::vector<uint32_t> keys = keyGen(key);
+	std::vector<uint32_t> seperated = split(ciphertext);
+	std::reverse(keys.begin(), keys.end());
+	uint32_t left = seperated[0];
+	uint32_t right = seperated[1];
+	for (uint32_t i = 0; i < 31; ++i) {
+		uint32_t newL = right;
+		uint32_t newR = left ^ rotation(right, keys[i]);
+		left = newL;
+		right = newR;
+	}
+	return join(left ^ rotation(right, keys[31]), right);
 }

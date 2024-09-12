@@ -46,13 +46,13 @@ public:
 
 	BinNum pBoxInv(BinNum number);
 
+	BinNum multBinPolys(BinNum x, BinNum y);
+
+	BinNum modBinPolys(BinNum x, BinNum y);
+
 	uint8_t linearFunct(BinNum number);
 
 	uint8_t kuzMult(uint8_t x, uint8_t y);
-
-	uint8_t multBinPolys(uint8_t x, uint8_t y);
-
-	uint8_t modBinPolys(uint8_t x, BinNum y);
 
 	uint8_t curBits(BinNum number);
 

@@ -1,5 +1,7 @@
 #include <iostream>
 #include <string>
+#include <iostream>
+#include <string>
 #include <stdexcept>
 #include <bitset>
 #include <cassert>
@@ -48,7 +50,7 @@ int main() {
 		0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
 	};
 	for (uint32_t i = 0; i < 24; ++i) {
-		std::cout << "Testing case " << i << ": ";
+		std::cout << "Testing case " << i + 1 << ": ";
 		if (keys[i] == checkKeys[i % 8]) {
 			std::cout << "Success." << std::endl;
 		}
@@ -57,14 +59,38 @@ int main() {
 		}
 	}
 	for (int i = 7; i >= 0; --i) {
-		std::cout << "Testing case " << i << ": ";
+		std::cout << "Testing case " << 7 - i + 25 << ": ";
 		if (keys[7 - i + 24] == checkKeys[i]) {
-
+			std::cout << "Success." << std::endl;
+		}
+		else {
+			std::cout << "Failure." << std::endl;
 		}
 	}
 	// above is the correct keys in the first 3 orders - simply reverse to obtain the 4th column in GOST
 	std::cout << "keygen functional." << std::endl;
 	std::cout << "***********************" << std::endl;
-
+	std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
+	std::cout << "Testing encryption." << std::endl;
+	std::cout << "Plaintext: 1122334455667700ffeeddccbbaa9988" << std::endl;
+	std::cout << "Key: 8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef" << std::endl;
+	std::cout << "Testing case: ";
+	assert(crypter.encrypt(0xfedcba9876543210, BinNum("ffeeddccbbaa99887766554433221100f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff", 256, 16)) == 0x4ee901e5c2d8ca3d);
+	std::cout << "Success." << std::endl;
+	std::cout << "Encryption functional." << std::endl;
+	std::cout << "***********************" << std::endl;
+	std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
+	std::cout << "Testing decryption." << std::endl;
+	std::cout << "Ciphertext: 0x4ee901e5c2d8ca3d" << std::endl;
+	std::cout << "Key: 8899aabbccddeeff0011223344556677fedcba98765432100123456789abcdef" << std::endl;
+	std::cout << "Testing case: ";
+	assert(crypter.decrypt(0x4ee901e5c2d8ca3d, BinNum("ffeeddccbbaa99887766554433221100f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff", 256, 16)) == 0xfedcba9876543210);
+	std::cout << "Success." << std::endl;
+	std::cout << "Decryption functional." << std::endl;
+	std::cout << "***********************" << std::endl;
+	std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
+	std::cout << "Magma implementation verified to GOST specifications." << std::endl;
+	std::cout << "All routines intact." << std::endl;
+	std::cout << "Continuing..." << std::endl;
 	return 0;
 }
