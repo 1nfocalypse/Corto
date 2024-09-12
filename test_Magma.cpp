@@ -40,6 +40,31 @@ int main() {
 	std::cout << "Success." << std::endl;
 	std::cout << "g-transform functional." << std::endl;
 	std::cout << "***********************" << std::endl;
+	std::cout << "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" << std::endl;
+	std::cout << "Testing keygen." << std::endl;
+	std::cout << "Generating keys..." << std::endl;
+	std::vector<uint32_t> keys = crypter.keyGen(BinNum("ffeeddccbbaa99887766554433221100f0f1f2f3f4f5f6f7f8f9fafbfcfdfeff", 256, 16));
+	std::vector<uint32_t> checkKeys = {
+		0xffeeddcc, 0xbbaa9988, 0x77665544, 0x33221100, 0xf0f1f2f3, 0xf4f5f6f7, 0xf8f9fafb, 0xfcfdfeff
+	};
+	for (uint32_t i = 0; i < 24; ++i) {
+		std::cout << "Testing case " << i << ": ";
+		if (keys[i] == checkKeys[i % 8]) {
+			std::cout << "Success." << std::endl;
+		}
+		else {
+			std::cout << "Failed." << std::endl;
+		}
+	}
+	for (int i = 7; i >= 0; --i) {
+		std::cout << "Testing case " << i << ": ";
+		if (keys[7 - i + 24] == checkKeys[i]) {
+
+		}
+	}
+	// above is the correct keys in the first 3 orders - simply reverse to obtain the 4th column in GOST
+	std::cout << "keygen functional." << std::endl;
+	std::cout << "***********************" << std::endl;
 
 	return 0;
 }

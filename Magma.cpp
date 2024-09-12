@@ -26,17 +26,37 @@ uint32_t Magma::rotation(uint32_t x, uint32_t k) {
 }
 
 std::vector<uint32_t> Magma::split(uint64_t value) {
-	std::vector<uint32_t> null = { 5 };
-	return null;
+	uint32_t rValue = value & 0xFFFFFFFF;
+	uint32_t lValue = static_cast<uint32_t>(value >> 32);
+	std::vector<uint32_t> retVals = { lValue, rValue };
+	return retVals;
 }
 
 uint64_t Magma::join(uint32_t left, uint32_t right) {
-	return 0;
+	uint64_t leftCpy = left;
+	leftCpy << 32;
+	leftCpy = leftCpy ^ right;
+	return leftCpy;
 }
 
+// key is 256 bit binnum
+// ret vector is 32 32 bit ints
+
 std::vector<uint32_t> Magma::keyGen(BinNum key) {
-	std::vector<uint32_t> null = { 5 };
-	return null;
+	std::vector<uint32_t> keys;
+	BinNum lsbMask32("FFFFFFFF", 256, 16);
+	for (int i = 7; i >= 0; --i) {
+		keys.push_back(std::stoul(((key >> (32 * i)) & lsbMask32).getVal(), nullptr, 2));
+	}
+	for (uint32_t i = 0; i < 2; ++i) {
+		for (uint32_t j = 0; j < 8; ++j) {
+			keys.push_back(keys[j]);
+		}
+	}
+	for (int i = 8; i >= 0; --i) {
+		keys.push_back(keys[i]);
+	}
+	return keys;
 }
 
 uint64_t Magma::encrypt(uint64_t plaintext, BinNum key) {
