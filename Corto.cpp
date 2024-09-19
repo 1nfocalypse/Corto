@@ -47,7 +47,16 @@ uint32_t decrypt(); // decryption handler
  * [8]: Make public
  */
 
-
+/*
+ * ./corto [-h/-help/--help] -> prints help
+ * ./corto [-i/-info/--info] -> prints info
+ * ./corto --verify -> verifies all implementations
+ * ./corto -mag --verify -> verifies magma
+ * ./corto -kuz --verify -> verifies kuznyechik
+ * ./corto -[mag/kuz] -[cbc/ebc] -k="<KEY_HERE>" -tgt="<ENC_TRGT_PTH>" -out="<OUTPUT_DIR>"
+ * ./corto -str --verify -> verifies streebog
+ * ./corto -str -[str/tgt="<HSH_TRGT_PATH>] -out[<PATH_TO_OUT>||0 (for in terminal)
+ */
 
 // main()
 // PRE: Program starts
