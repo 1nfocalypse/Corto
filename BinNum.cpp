@@ -47,27 +47,20 @@ BinNum::BinNum(std::string number, uint32_t bitSize, uint32_t base) : myStr(numb
 	}
 	if (base == 10) {
 		myStr = decToBin(myStr);
-		size = myStr.size();
+		// size = myStr.size();
 		base = 2;
-		if (size > bitSize && bitSize != 0) {
-			throw std::length_error("Insufficient bits provided to hold number " + number + ".");
-		}
-		if (size < bitSize) {
-			std::string padStr(bitSize - myStr.length(), '0');
-			myStr = padStr + myStr;
-		}
 	}
 	if (base == 16) {
 		myStr = hexToBin(myStr);
-		size = myStr.size();
+		// size = myStr.size();
 		base = 2;
-		if (size > bitSize && bitSize != 0) {
-			throw std::length_error("Insufficient bits provided to hold number " + number + ".");
-		}
-		if (size < bitSize) {
-			std::string padStr(bitSize - myStr.length(), '0');
-			myStr = padStr + myStr;
-		}
+	}
+	if (size > bitSize && bitSize != 0) {
+		throw std::length_error("Insufficient bits provided to hold number " + number + ".");
+	}
+	if (myStr.length() < bitSize) {
+		std::string padStr(bitSize - myStr.length(), '0');
+		myStr = padStr + myStr;
 	}
 }
 

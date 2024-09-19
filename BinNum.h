@@ -1,6 +1,30 @@
 #pragma once
 #include <string>
 
+/*
+ *     ____  _       _   __              
+ *    / __ )(_____  / | / __  ______ ___ 
+ *   / __  / / __ \/  |/ / / / / __ `__ \
+ *  / /_/ / / / / / /|  / /_/ / / / / / /
+ * /_____/_/_/ /_/_/ |_/\__,_/_/ /_/ /_/
+ *
+ *************************************************************************************************************************
+ * BinNum is a custom class supporting arbitrary size registers in C++ to store and manipulate unsigned integers. 
+ * It stores data as binary numbers represented as standard strings. However, it does NOT follow C standard integer
+ * behavior. For information on expected behavior, usage, and syntax, please consult the documentation provided in the 
+ * README.
+ *
+ * Please verify that the class is functioning correctly. If you notice any bugs, please bring them to my attention.
+ * Eventually, the plan is to further support strict typing with the class to allow for arbitrary size registers
+ * for all primitive types. Additionally, this will likely come with optimizations, as some operations can be sluggish
+ * and have more obvious solutions, however, were not necessary to implement for the scope of Corto as a project.
+ * Please verify all components used when practicing cryptography. To test the class via the Corto controller, please run
+ * ./corto -bn --verify
+ *
+ * Music Recommendation: i.believe.in.angels - heaven (Liquid Drum and Bass) https://www.youtube.com/watch?v=R8QFFAVo2JU
+ ************************************************************************************************************************
+ */
+
 class BinNum {
 private:
     uint32_t size;

@@ -3,6 +3,38 @@
 #include <vector>
 #include "BinNum.h"
 
+/*
+ *     __  ___                               ____   __________ ___________
+ *    /  |/  ____ _____ _____ ___  ____ _   / / /  / ____/ __ / ___/_  __/
+ *   / /|_/ / __ `/ __ `/ __ `__ \/ __ `/  / / /  / / __/ / / \__ \ / /   
+ *  / /  / / /_/ / /_/ / / / / / / /_/ /  / / /  / /_/ / /_/ ___/ // /    
+ * /_/  /_/\__,_/\__, /_/ /_/ /_/\__,_/  / / /   \____/\____/____//_/     
+ *              /____/                  /_/_/                             
+ * 
+ *************************************************************************************************************************
+ * Magma, also known as GOST prior to 2015, is a block cipher specified in GOST R 34.12-2015. It operates with a 64 bit
+ * block size and a 256 bit key size. It is a Feistel Network consisting of 32 rounds, utilizing a S box and a rotational
+ * shift as the round function. The key schedule is also incredibly simple - it simply segments the key into eight 
+ * subkeys, and uses them four times each, reversing the key order to populate the last 8 slots. Originally, Magma/GOST
+ * did not have a specified S-box, as it was to be handed out by the Soviet Union state apparatus and otherwise kept
+ * confidential. Naturally, this lead to speculation regarding the provided S-boxes, with many assuming that the state
+ * gave organizations it intended to spy on weak S-boxes in order to facilitate intelligence gathering. However, with the
+ * 2015 update, we have obtained a standardized S-box, which is used here. 
+ * 
+ * Magma || GOST enjoyed a high level of success for several decades, and is still theoretically secure IFF proper
+ * practice is applied. (For example, if you attempt to encrypt 2^32 blocks (about 34 GB) with Magma via the Corto 
+ * controller, you will be prompted to rekey your cipher). However, numerous successful attacks exist against the cipher 
+ * otherwise, which one should keep in mind when utilizing any cryptographic algorithm.
+ * 
+ * Please verify that ANY implementation you use at minimum meets the specifications set forth in GOST R 34.12-2015, 
+ * available in the repo in Russian (I might translate it, and by me, I mean Google Translate). You can confirm this 
+ * implementation meets those standards by running
+ * ./corto -mag --verify
+ * 
+ * Music Recommendation: Aborted Tortoise - Do Not Resuscitate (Punk) https://www.youtube.com/watch?v=faJHi_JJzvc
+ ************************************************************************************************************************
+ */
+
 class Magma
 {
 private:
