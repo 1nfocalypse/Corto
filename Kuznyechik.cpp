@@ -218,7 +218,11 @@ std::vector<BinNum> Kuznyechik::keyScheduler(BinNum number) {
     return keys;
 }
 
-BinNum Kuznyechik::encrypt(BinNum plaintext, BinNum key) {
+std::vector<BinNum> Kuznyechik::keyScheduler(BinNum number) const {
+    return keyScheduler(number);
+}
+
+BinNum Kuznyechik::test_encrypt(BinNum plaintext, BinNum key) {
     std::vector<BinNum> keys = keyScheduler(key);
     BinNum ptCopy(plaintext);
     for (uint32_t i = 0; i < 9; ++i) {
@@ -227,7 +231,7 @@ BinNum Kuznyechik::encrypt(BinNum plaintext, BinNum key) {
     return ptCopy ^ keys.back();
 }
 
-BinNum Kuznyechik::decrypt(BinNum ciphertext, BinNum key) {
+BinNum Kuznyechik::test_decrypt(BinNum ciphertext, BinNum key) {
     std::vector<BinNum> keys = keyScheduler(key);
     BinNum ctCopy(ciphertext);
     std::reverse(keys.begin(), keys.end());
@@ -237,6 +241,6 @@ BinNum Kuznyechik::decrypt(BinNum ciphertext, BinNum key) {
     return ctCopy ^ keys.back();
 }
 
-bool Kuznyechik::integrityCheck() {
-    return false;
+void Kuznyechik::verify() const {
+    std::cout << "not implemented" << std::endl;
 }

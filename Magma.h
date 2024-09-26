@@ -58,10 +58,22 @@ public:
 
 	uint64_t join(uint32_t left, uint32_t right);
 
-	std::vector<uint32_t> keyGen(BinNum key);
 
-	uint64_t encrypt(uint64_t plaintext, BinNum key);
 
-	uint64_t decrypt(uint64_t ciphertext, BinNum key);
+
+	// std::vector<uint32_t> keyScheduler(BinNum key);
+	std::vector<BinNum> keyScheduler(BinNum key) const;
+
+	std::vector<BinNum> keyScheduler(BinNum key);
+
+	/*uint64_t test_encrypt(uint64_t plaintext, BinNum key);
+
+	uint64_t test_decrypt(uint64_t ciphertext, BinNum key);*/
+
+	BinNum threadEncrypt();
+
+	BinNum threadDecrypt();
+
+	void verify() const;
 };
 

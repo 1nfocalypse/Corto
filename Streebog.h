@@ -153,5 +153,7 @@ public:
 
     BinNum E(BinNum left, BinNum m) const;
 
+    void verify() const;
+
 };
 

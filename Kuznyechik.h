@@ -89,14 +89,22 @@ public:
 
 	std::vector<BinNum> keyScheduler(BinNum number);
 
+	std::vector<BinNum> keyScheduler(BinNum number) const;
 
 
 
-	BinNum encrypt(BinNum plaintext, BinNum key);
 
-	BinNum decrypt(BinNum ciphertext, BinNum key);
+	BinNum test_encrypt(BinNum plaintext, BinNum key);
 
-	bool integrityCheck();
+	BinNum test_decrypt(BinNum ciphertext, BinNum key);
+
+	template <typename T>
+	BinNum threadEncrypt();
+
+	template <typename T>
+	BinNum threadDecrypt();
+
+	void verify() const;
 
 };
 

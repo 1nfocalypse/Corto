@@ -5,7 +5,6 @@
 #include <vector>
 #include <iostream>
 
-// also, implement CBC for Kuznyechik and Magma. 
 // consider processing as hexadecimal strings instead of binary
 
 // instrumented for testing -> testing blocks will be seperated out by spaces and ***** bars
@@ -198,4 +197,8 @@ void Streebog::setInitKey(BinNum number) {
 
 BinNum Streebog::getInitKey() const {
 	return this->initKey;
+}
+
+void Streebog::verify() const {
+	std::cout << "Not implemented." << std::endl;
 }
