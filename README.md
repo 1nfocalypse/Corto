@@ -117,8 +117,9 @@ hashes all utilize a Merkel-Damgard construction, Keccak does not. While SHA2 al
 
 ## Conclusion
 Corto, while a functional implementation of the GOST cryptographic standards, is primarily more meant for fun and education. It is purely software defined and does not enjoy the hardware acceleration offered by more nuanced implementations. Additionally, while it complies with the tests set forth in the standards, it is not peer-reviewed, and
-as such, may contain errors. Please see the contributing file if you spot any, and I'll be happy to merge any PRs that fix them. Lastly, I would like to reference the videos by JacksonInfoSec on both [Kuznyechik](https://www.youtube.com/watch?v=DhWNFEa7alM) and [Magma](https://www.youtube.com/watch?v=Aq5y9pnbCSM) 
-(unfortunately he does not have one for Streebog), as they are excellent resources. Additionally, a C implementation of Magma is available in [Applied Cryptography by Bruce Schneier](https://www.amazon.com/Applied-Cryptography-Protocols-Algorithms-Source/dp/0471117099) if you would like another reference. Thank you for reading!
+as such, may contain errors. Please see the contributing file if you spot any, and I'll be happy to merge any PRs that fix them. I would also like to reference the videos by JacksonInfoSec on both [Kuznyechik](https://www.youtube.com/watch?v=DhWNFEa7alM) and [Magma](https://www.youtube.com/watch?v=Aq5y9pnbCSM) 
+(unfortunately he does not have one for Streebog), as they are excellent resources. A C implementation of Magma is available in [Applied Cryptography by Bruce Schneier](https://www.amazon.com/Applied-Cryptography-Protocols-Algorithms-Source/dp/0471117099) if you would like another reference. Finally, if this all seems to 
+be a bit much or you are just starting out in cryptography, I encourage you to check out my [writeup](https://github.com/1nfocalypse/CryptoWriteup) targeted at making these concepts more accessible. Thank you for reading!
 
 
 ## Usage
