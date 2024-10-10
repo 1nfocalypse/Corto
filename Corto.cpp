@@ -43,19 +43,6 @@
  ************************************************************************************************************************
  */
 
-/* TO DO
- * [0]: Edit tester classes to maintain parity with one another                             [X]
- * [1]: Add tester classes as friends to their respective classes (make the guts private)   [X]
- * [2]: Take a closer look at speeding up Kuznyechik                                        [X]
- * [3]: Implement ctrl structure for terminal args                                          [X]
- * [4]: Clean up artefacts                                                                  [X]
- * [5]: Test Kuznyechik CBC on supertester                                                  [X]
- * [6]: Document, document, document                                                        [X]
- * [7]: Write readme/make art                                                               [ ]
- * [8]: Translate spec                                                                      [ ]
- * [9]: Make public                                                                         [ ]
- */
-
 // forward decs
 void printHelp();
 void printInfo();
