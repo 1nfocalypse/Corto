@@ -32,6 +32,7 @@
 
 class Streebog
 {
+    friend class StrFunctor;
 private:
     
     BinNum h = initNum512;
@@ -119,40 +120,104 @@ private:
         0x07e095624504536c, 0x8d70c431ac02a736, 0xc83862965601dd1b, 0x641c314b2b8ee083
     };
 
-public:
-    BinNum initNum256{ "01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101", 512, 16 }; // 64 bytes of 1 -> 256 bits
-    BinNum initNum512{ "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 512, 16 }; // 64 bytes of 0 -> 512 bits
-    
-    std::string hash(std::list<std::string> cleartext, int size);
-
+    // sBox(BinNum number) const | S
+    // PRE: 512 bit BinNum passed
+    // POST: All bytes substituted and returned as 512 bit BinNum
+    // WARNINGS: None
     BinNum sBox(BinNum number) const;
 
+    // pBox(BinNum number) const | P
+    // PRE: 512 bit BinNum passed
+    // POST: All bytes substituted with tau and returned as 512 bit BinNum
+    // WARNINGS: None
     BinNum pBox(BinNum number) const;
 
+    // precompShift(BinNum number) const | L
+    // PRE: 512 bit BinNum passed
+    // POST: All bytes XOR'd with constants and returned as 512 bit BinNum
+    // WARNINGS: None
     BinNum precompShift(BinNum number) const;
 
+    // keyGen(BinNum initKey) const
+    // PRE: 512 bit initial key passed
+    // POST: Vector of all 13 keys returned
+    // WARNINGS: None
     std::vector<BinNum> keyGen(BinNum initKey) const;
 
+    // setH(BinNum number)
+    // PRE: 512 bit BinNum passed
+    // POST: internal H value set as new number
+    // WARNINGS: None
     void setH(BinNum number);
 
+    // setN(BinNum number)
+    // PRE: 512 bit BinNum passed
+    // POST: internal N value set as new number
+    // WARNINGS: None
     void setN(BinNum number);
-    
+
+    // setSigma(BinNum number)
+    // PRE: 512 bit BinNum passed
+    // POST: internal sigma value set as new number
+    // WARNINGS: None
     void setSigma(BinNum number);
 
+    // setInitKey(BinNum number)
+    // PRE: 512 bit BinNum passed
+    // POST: internal initial key value set as new number
+    // WARNINGS: None
     void setInitKey(BinNum number);
 
+    // getH() const
+    // PRE: H is initialized
+    // POST: internal H value returned as BinNum
+    // WARNINGS: None
     BinNum getH() const;
 
+    // getN() const
+    // PRE: N is initialized
+    // POST: internal N value returned as BinNum
+    // WARNINGS: None
     BinNum getN() const;
 
+    // getSigma() const
+    // PRE: sigma is initialized
+    // POST: internal sigma value returned as BinNum
+    // WARNINGS: None
     BinNum getSigma() const;
 
+    // getInitKey() const
+    // PRE: initKey is initialized
+    // POST: internal initial key value returned as BinNum
+    // WARNINGS: None
     BinNum getInitKey() const;
 
+    // gN(BinNum N, BinNum h, BinNum m) const
+    // PRE: N, h, m passed as BinNum
+    // POST: Returns result of compression/round function.
+    // WARNINGS: Note, N here is not the same as the internal N. Refer to GOST R 34.11-2012 "Round-functions".
     BinNum gN(BinNum N, BinNum h, BinNum m) const;
 
+    // E(BinNum left, BinNum m) const
+    // PRE: 512 bit BinNums passed
+    // POST: Returns result of key mixing with all rounds of LPS for each key as 512 bit BinNum
+    // WARNINGS: None
     BinNum E(BinNum left, BinNum m) const;
 
+public:
+    BinNum initNum256{ "01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101", 512, 16 }; // 64 bytes of 1 for 256 bits
+    BinNum initNum512{ "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000", 512, 16 }; // 64 bytes of 0 for 512 bits
+    
+    // hash(std::list<std::string> cleartext, int size)
+    // PRE: Target data is formatted as a list, with a byte per node as a std string, size = 512 || 256
+    // POST: Returns digest as a string containing the hexadecimal digest.
+    // WARNINGS: None
+    std::string hash(std::list<std::string> cleartext, int size);
+
+    // verify() const
+    // PRE: Verification argument provided
+    // POST: Calls verification functor, demonstrating compliance with GOST R 34.11-2012 testing standards.
+    // WARNINGS: None
     void verify() const;
 
 };

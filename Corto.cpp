@@ -44,37 +44,31 @@
  */
 
 /* TO DO
- * [1]: Edit tester classes to maintain parity with one another                             [ ]
- * [2]: Add tester classes as friends to their respective classes (make the guts private)   [ ]
- * [3]: Take a closer look at speeding up Kuznyechik                                        [X]
- * [4]: Implement ctrl structure for terminal args                                          [X]
- * [5]: Document, document, document                                                        [ ]
- * [6]: Clean up artefacts                                                                  [ ]
+ * [0]: Edit tester classes to maintain parity with one another                             [X]
+ * [1]: Add tester classes as friends to their respective classes (make the guts private)   [X]
+ * [2]: Take a closer look at speeding up Kuznyechik                                        [X]
+ * [3]: Implement ctrl structure for terminal args                                          [X]
+ * [4]: Clean up artefacts                                                                  [X]
+ * [5]: Test Kuznyechik CBC on supertester                                                  [X]
+ * [6]: Document, document, document                                                        [X]
  * [7]: Write readme/make art                                                               [ ]
- * [8]: Make public                                                                         [ ]
- */
-
-/*
- * ./corto [-h/-help/--help] -> prints help | ARGC = 2                                              H:[X]I:[X]
- * ./corto [-i/-info/--info] -> prints info | ARGC = 2                                              H:[X]I:[X]
- * ./corto --verify -> verifies all implementations | ARGC = 2                                      H:[X]I:[ ]
- * ./corto -mag --verify -> verifies magma | ARGC = 3                                               H:[X]I:[ ]
- * ./corto -kuz --verify -> verifies kuznyechik | ARGC = 3                                          H:[X]I:[ ]
- * ./corto -str --verify -> verifies streebog | ARGC = 3                                            H:[X]I:[ ]
- * ./corto -str -[256/512] -[stl="<HASH_STR>/tgt="<HSH_TRGT_PATH>] -out=[<PATH_TO_OUT>||0 5         H:[X]I:[X]
- * ./corto -[mag/kuz] -[cbc/ecb=N] -[e/d] -k="<KEY_HERE>" -tgt="<ENC_TRGT_PTH>" -out="<OUTPUT_DIR>" H:[X]I:[ ]
+ * [8]: Translate spec                                                                      [ ]
+ * [9]: Make public                                                                         [ ]
  */
 
 // forward decs
 void printHelp();
 void printInfo();
 std::list<std::string> strToBits(std::string data);
-void hashOut(std::string strLit, std::string tarOutPath, int bits);
+void hashOut(std::string &strLit, std::string tarOutPath, int bits);
 void procInput(std::string inPath, std::string outPath, int bits);
 void argHandler(uint32_t argc, std::vector<std::string> args);
-template<typename T> void verifyAlgorithm(const T& algo);
-template<typename T> void cbc(const T& crypter, bool encOrDec, std::string key, std::string inputTar, std::string outputTar);
-template<typename T> void ecb(const T& crypter, uint32_t threads, bool encOrDec, std::string key, std::string inputTar, std::string outputTar);
+template<typename T>
+void verifyAlgorithm(const T& algo);
+template<typename T>
+void cbc(T& crypter, bool encOrDec, std::string key, std::string inputTar, std::string outputTar);
+template<typename T>
+void ecb(T& crypter, uint32_t threads, bool encOrDec, std::string key, std::string inputTar, std::string outputTar);
 
 // main()
 // PRE: Program starts
@@ -84,20 +78,18 @@ template<typename T> void ecb(const T& crypter, uint32_t threads, bool encOrDec,
 
 int main(uint32_t argc, char *argv[]) {
     // proc args into vector, cast into std strings
-    std::random_device comp;
     std::vector<std::string> arguments;
     for (uint32_t i = 0; i < argc; ++i) {
         arguments.push_back(std::string(argv[i]));
-    }
-    if (comp.entropy() == 0 && arguments[2] == "-cbc") {
-        std::cout << "ERROR: Your device does not support TRNG.\n" <<
-            "CBC mode requires RDRAND support. Try ecb?" << std::endl;
-        return 0;
     }
     argHandler(argc, arguments);
     return 0;
 }
 
+// strToBits(std::string data)
+// PRE: String of data passed
+// POST: String is seperated into a list of bytes
+// WARNINGS: Large strings may cause issues depending on user memory availability due to contiguity requirements.
 std::list<std::string> strToBits(std::string data) {
     std::list<std::string> dataList;
     for (char i : data) {
@@ -106,12 +98,20 @@ std::list<std::string> strToBits(std::string data) {
     return dataList;
 }
 
+// verifyAlgorithm(const T& algo)
+// PRE: A valid cryptographic object is passed
+// POST: Verification for referenced algorithm is complete
+// WARNINGS: None
 template<typename T>
 void verifyAlgorithm(const T& algo) {
     algo.verify();
 }
 
-void hashOut(std::string strLit, std::string tarOutPath, int bits) {
+// hashOut(std::string &strLit, std::string tarOutPath, int bits)
+// PRE: valid string literal, output path, and bits (512/256) passed
+// POST: Hash value is outputted to file
+// WARNINGS: File name collision may occur
+void hashOut(std::string &strLit, std::string tarOutPath, int bits) {
     Streebog str;
     std::list<std::string> data = strToBits(strLit);
     std::string hashVal = "0x" + str.hash(data, bits);
@@ -132,28 +132,31 @@ void hashOut(std::string strLit, std::string tarOutPath, int bits) {
     }
 }
 
+// procInput(std::string inPath, std::string outPath, int bits)
+// PRE: input path, output path, and bits (512/256) passed
+// POST: Target is read in as string
+// WARNINGS: Large files may cause issues depending on user memory availability due to contiguity requirements.
 void procInput(std::string inPath, std::string outPath, int bits) {
-    std::ifstream inFile(inPath.c_str());
-    std::string data;
+    std::ifstream inFile(inPath.c_str(), std::ios::binary);
+    std::string bytes;
     if (inFile.good()) {
-        auto out = std::string();
-        auto buf = std::string(100, '\0');
-        while (inFile.read(&buf[0], 100)) {
-            out.append(buf, 0, inFile.gcount());
+        char byte;
+        while (inFile.get(byte)) {
+            bytes += static_cast<char>(byte);
         }
-        out.append(buf, 0, inFile.gcount());
-        data = out;
         inFile.close();
     }
     else {
         std::cout << "Error: Could not open input file." << std::endl;
     }
-    hashOut(data, outPath, bits);
+    hashOut(bytes, outPath, bits);
 }
 
-// yes i know this sucks
-// i'll actually do a proper command pattern and allat with the big one
-// i'm just lazy
+// argHandler(uint32_t argc, std::vector<std::string> arguments)
+// PRE: argcount, preprocessed arguments passed
+// POST: Correct function is called in accordance with arguments
+// WARNINGS: None
+// NOTES: Yes, I know this is bad practice. For major combinations later on, a proper command pattern will be used.
 void argHandler(uint32_t argc, std::vector<std::string> arguments) {
     switch (argc) {
     case 2:
@@ -236,16 +239,15 @@ void argHandler(uint32_t argc, std::vector<std::string> arguments) {
             (arguments[6].rfind("-out=", 0) == 0)) {
 
             bool cipher = (arguments[1] == "-mag"); // 1 for mag, 0 for kuz
-            bool mode = (arguments[2] == "-cbc"); // 1 for cbc, 0 for ebc
+            bool mode = (arguments[2] == "-cbc"); // 1 for cbc, 0 for ecb
             bool encOrDec = (arguments[3] == "-e"); // 1 for enc, 0 for dec
             uint32_t threads;
             std::string key = arguments[4].substr(3);
-            std::string tarPath = arguments[4].substr(5);
+            std::string tarPath = arguments[5].substr(5);
             std::string outPath = arguments[6].substr(5);
             if (!mode) {
                 threads = std::stoul(arguments[2].substr(5));
             }
-            // i'm a dumbass, gotta do e/d
             if (cipher) {
                 Magma mag;
                 if (mode) {
@@ -253,8 +255,8 @@ void argHandler(uint32_t argc, std::vector<std::string> arguments) {
                     cbc(mag, encOrDec, key, tarPath, outPath);
                 }
                 else {
-                    // ebc(mag)
-                    ecb(mag, encOrDec, threads, key, tarPath, outPath);
+                    // ecb(mag)
+                    ecb(mag, threads, encOrDec, key, tarPath, outPath);
                 }
             }
             else {
@@ -264,7 +266,7 @@ void argHandler(uint32_t argc, std::vector<std::string> arguments) {
                     cbc(kuz, encOrDec, key, tarPath, outPath);
                 }
                 else {
-                    // ebc(kuz)
+                    // ecb(kuz)
                     ecb(kuz, threads, encOrDec, key, tarPath, outPath);
                 }
             }
@@ -272,139 +274,308 @@ void argHandler(uint32_t argc, std::vector<std::string> arguments) {
         else {
             std_usage;
         }
+        break;
     default:
         std_usage;
-        std::cout << "Default reached. RM AFTER DEBUGGING." << std::endl;
     }
 }
 
+
+// cbc(T& crypter, bool encOrDec, std::string key, std::string inputTar, std::string outputTar)
+// PRE: Cipher object, encryption or decryption flag, key, input target, and output target are passed and valid
+// POST: Target data is encrypted with relevant algorithm in CBC mode.
+// WARNINGS: Will halt if invalid paths are given.
+// NOTES: Proper polymorphism will be adopted for the cumulative project such that less risky type identification is used
 template<typename T>
-void cbc(const T& crypter, bool encOrDec, std::string key, std::string inputTar, std::string outputTar) {
+void cbc(T& crypter, bool encOrDec, std::string key, std::string inputTar, std::string outputTar) {
     uint32_t blockCtr = 0;  // magma can encrypt up to about 30 GB of data before needing to be rekeyed (2^32 blocks of 64 bits)
-    uint32_t blockSize;     // holds block size depending on algorithm passed
+    uint32_t blockSize = 0;     // holds block size depending on algorithm passed
     std::string cbcPreviousOutput;  // holds the previous result to xor with current
     std::string cbcCurOutput; // current
     Streebog str; // streebog hasher for KDF-256
-    std::ifstream inFile(inputTar); // read from here
-    std::ofstream outFile(outputTar); // output to here
-    std::string fileExtension = inputTar.substr(inputTar.find(".")); // file extension, to be appended at the back of the file using ecb
+    std::ifstream inFile(inputTar, std::ios::binary); // read from here
+    std::ofstream outFile(outputTar, std::ios::binary); // output to here
+    std::string fileExtension = inputTar.substr(inputTar.find("."));
     std::random_device rd; // TRNG source for nonces (no need to be kept secret, will be inserted at beginning of file)
 
-    // kdf from user entered code (should really enforce minimum entropic standards)
+    // determine what we're doing operations with
+    if (typeid(crypter) == typeid(Magma)) {
+        blockSize = 8;
+    }
+    else {
+        blockSize = 16;
+    }
+    std::string inTarCpy = inputTar;
+    std::reverse(inTarCpy.begin(), inTarCpy.end());
+    std::string fileName = inTarCpy.substr(0, inTarCpy.find("/"));
+    std::reverse(fileName.begin(), fileName.end());
+    if (encOrDec) {
+        // encrypting
+        // grab filename
+        if (blockSize == 16) {
+            fileName += ".kuz-cbc";
+            std::cout << "This implementation of Kuznyechik is slow (~5.5 bytes/s)." << std::endl;
+            std::cout << "Please be patient or reconsider its use for large files." << std::endl;
+        }
+        else {
+            fileName += ".mag-cbc";
+        }
+        std::string outFileFullPath = outputTar + fileName;
+        outFile.open(outFileFullPath.c_str(), std::ios::binary);
+    }
+    else {
+        fileName = fileName.substr(0, fileName.length() - 8); // corto always uses 8 characters including . for filetypes
+        outFile.open((outputTar + fileName).c_str(), std::ios::binary);
+    }
+    if (!outFile.good()) {
+        std::cout << "Unable to open output file. Ensure appropriate write permissions exist." << std::endl;
+        return;
+    }
     std::cout << "Generating keys..." << std::endl;
-    // seperate the key into a list
     std::list<std::string> keyList;
     for (char character : key) {
         keyList.push_back(std::bitset<8>(character).to_string());
     }
     std::string derivedKey = str.hash(keyList, 256);
-    
-    
     BinNum passableKey(derivedKey, 256, 16);
     std::vector<BinNum> keys = crypter.keyScheduler(passableKey);
     std::cout << "Done." << std::endl;
-    // determine block size in bytes
-    if (typeid(crypter) == typeid(Magma())) {
-        blockSize = 8; // 8 8 bit chars -> 64 bit bs
-    }
-    else {
-        blockSize = 16; // 16 8 bit chars -> 128 bit bs
-    }
-    std::cout << "Generating nonce..." << std::endl;
-    std::string nonce;
-    uint32_t limit = 8 * blockSize;
-    uint32_t curCount = 0;
-    // while (curCount != limit) {
 
-    // }
-
+    BinNum nonce("0", 1);
+    if (encOrDec) {
+        std::cout << "Generating nonce..." << std::endl;
+        if (rd.entropy() == 0) { 
+            std::cout << "CBC is not supported by your CPU. Try ECB?" << std::endl; 
+            return;
+        }
+        if (blockSize == 8) {
+            std::string nonceFirst = std::bitset<32>(rd()).to_string();
+            std::string nonceLast = std::bitset<32>(rd()).to_string();
+            nonce = BinNum(nonceFirst + nonceLast, 64);
+        }
+        else {
+            std::string binNonce;
+            for (uint32_t i = 0; i < 4; ++i) {
+                binNonce += std::bitset<32>(rd()).to_string();
+            }
+            nonce = BinNum(binNonce, 128);
+        }
+        std::cout << "Done." << std::endl;
+    }
 
     if (inFile.good()) {
-        std::string cipherTarget; // cipher target
-        auto buf = std::string(blockSize, '\0'); // input buffer
-        while (inFile.read(&buf[0], blockSize)) {
-            // read in blocksize
-            // if gcount < blocksize
-            // pad
-            // else op
-            if (inFile.gcount() < 128) {
-                buf = buf.substr(0, inFile.gcount());
-                std::string myStr("\0", 128 - inFile.gcount());
-                buf = buf + myStr;
+        auto buf = std::string(blockSize, '\0');
+        std::list<BinNum> inFileContents;
+        // read file data into a list
+        while (inFile.read(&buf[0], blockSize) || inFile.gcount() > 0) {
+            uint32_t curGCount = inFile.gcount();
+            std::string toBinNum;
+            bool eof = inFile.peek() == EOF;
+            if (encOrDec && curGCount > 0 && inFile.peek() == EOF) {
+                // pad with null bytes
+                uint32_t index = curGCount;
+                while (index != blockSize) {
+                    buf[index] = '\0';
+                    ++index;
+                }
             }
-            // if enc
-            // send block to encryption
-            // if blockCtr >= 1, CBC
-            // else if dec
-            // send block to dec
-            // read next block... oh fuck i have to read from the end
-            
-            // out.append(buf, 0, inFile.gcount());
+            for (char ch : buf) {
+                toBinNum += std::bitset<8>(ch).to_string();
+            }
+            inFileContents.push_back(BinNum(toBinNum));
         }
-        // out.append(buf, 0, inFile.gcount());
-        // data = out;
-        inFile.close();
+        if (encOrDec) {
+            // encrypting
+            std::list<BinNum>::iterator it = inFileContents.begin();
+            // output nonce
+            if (blockSize == 8) {
+                uint64_t value = std::stoull(nonce.getVal(), nullptr, 2);
+                unsigned char bytes[8];
+                for (uint32_t i = 0; i < sizeof(value); ++i) {
+                    bytes[i] = (value >> ((7 - i) * 8)) & 0xFF;
+                }
+                for (int i = 0; i < 8; ++i) {
+                    outFile << bytes[i];
+                }
+            }
+            else {
+                uint64_t val1 = std::stoull(nonce.getVal().substr(0, 64), nullptr, 2);
+                uint64_t val2 = std::stoull(nonce.getVal().substr(64, 64), nullptr, 2);
+                unsigned char bytes[16];
+                for (uint32_t i = 0; i < sizeof(val1); ++i) {
+                    bytes[i] = (val1 >> ((7 - i) * 8)) & 0xFF;
+                }
+                for (uint32_t i = 0; i < sizeof(val2); ++i) {
+                    bytes[i + 8] = (val2 >> ((7 - i) * 8)) & 0xFF;
+                }
+                for (uint32_t i = 0; i < 16; ++i) {
+                    outFile << bytes[i];
+                }
+            }
+            BinNum prev = nonce;
+            while (it != inFileContents.end()) {
+                BinNum current = *it;
+                BinNum toEnc = current ^ prev;
+                BinNum encrypted = crypter.encrypt(toEnc, keys);
+                // output encrypted
+                if (blockSize == 8) {
+                    uint64_t value = std::stoull(encrypted.getVal(), nullptr, 2);
+                    unsigned char bytes[8];
+                    for (uint32_t i = 0; i < sizeof(value); ++i) {
+                        bytes[i] = (value >> ((7 - i) * 8)) & 0xFF;
+                    }
+                    for (int i = 0; i < 8; ++i) {
+                        outFile << bytes[i];
+                    }
+                }
+                else {
+                    uint64_t val1 = std::stoull(encrypted.getVal().substr(0, 64), nullptr, 2);
+                    uint64_t val2 = std::stoull(encrypted.getVal().substr(64, 64), nullptr, 2);
+                    unsigned char bytes[16];
+                    for (uint32_t i = 0; i < sizeof(val1); ++i) {
+                        bytes[i] = (val1 >> ((7 - i) * 8)) & 0xFF;
+                    }
+                    for (uint32_t i = 0; i < sizeof(val2); ++i) {
+                        bytes[i + 8] = (val2 >> ((7 - i) * 8)) & 0xFF;
+                    }
+                    for (uint32_t i = 0; i < 16; ++i) {
+                        outFile << bytes[i];
+                    }
+                }
+                ++it;
+                prev = encrypted;
+            }
+            outFile.close();
+        }
+        else {
+            // decrypting
+            std::list<BinNum>::iterator it = inFileContents.end();
+            --it; // go to first valid block
+            BinNum cur = *it;
+            BinNum prev = *(--it);
+            std::list<BinNum> decryptedList;
+            while (it != inFileContents.begin()) {
+                BinNum decrypted = crypter.decrypt(cur, keys);
+                BinNum plaintext = decrypted ^ prev;
+                decryptedList.push_front(plaintext);
+                cur = prev;
+                prev = *(--it);
+            }
+            // it = nonce
+            BinNum nonce = *it;
+            BinNum startVal = *(++it);
+            decryptedList.push_front(crypter.decrypt(startVal, keys) ^ nonce);
+            for (BinNum cur : decryptedList) {
+                if (blockSize == 8) {
+                    uint64_t value = std::stoull(cur.getVal(), nullptr, 2);
+                    unsigned char bytes[8];
+                    for (uint32_t i = 0; i < sizeof(value); ++i) {
+                        bytes[i] = (value >> ((7 - i) * 8)) & 0xFF;
+                    }
+                    for (int i = 0; i < 8; ++i) {
+                        outFile << bytes[i];
+                    }
+                }
+                else {
+                    uint64_t val1 = std::stoull(cur.getVal().substr(0, 64), nullptr, 2);
+                    uint64_t val2 = std::stoull(cur.getVal().substr(64, 64), nullptr, 2);
+                    unsigned char bytes[16];
+                    for (uint32_t i = 0; i < sizeof(val1); ++i) {
+                        bytes[i] = (val1 >> ((7 - i) * 8)) & 0xFF;
+                    }
+                    for (uint32_t i = 0; i < sizeof(val2); ++i) {
+                        bytes[i + 8] = (val2 >> ((7 - i) * 8)) & 0xFF;
+                    }
+                    for (uint32_t i = 0; i < 16; ++i) {
+                        outFile << bytes[i];
+                    }
+                }
+            }
+            outFile.close();
+        }
     }
-    else {
-        std::cout << "Could not find target file." << std::endl;
-        return;
-    }
-    inFile.close();
-    outFile.close();
 }
 
+// ecb(T& crypter, uint32_t threads, bool encOrDec, std::string key, std::string inputTar, std::string outputTar)
+// PRE: Cipher object, number of threads, encryption or decryption flag, key, input target, and output target are passed and valid
+// POST: Target data is encrypted with relevant algorithm in ECB mode with n threads.
+// WARNINGS: Will halt if invalid paths are given. Unintentional behavior may arise from bad thread input.
+// NOTES: Proper polymorphism will be adopted for the cumulative project such that less risky type identification is used
 template<typename T>
-void ecb(const T& crypter, uint32_t threads, bool encOrDec, std::string key, std::string inputTar, std::string outputTar) {
-    Streebog str;
-    std::ifstream inFile(inputTar.c_str());
-    std::ofstream outFile(outputTar.c_str());
+void ecb(T& crypter, uint32_t threads, bool encOrDec, std::string key, std::string inputTar, std::string outputTar) {
+    Streebog str; 
     uint32_t blockCtr = 0;
     int blockSize;
     std::vector<std::thread> threadPool;
     std::vector<BinNum> blocks;
     std::mutex mtx;
-    std::string fileExtension = inputTar.substr(inputTar.find("."));
+    std::ifstream inFile(inputTar.c_str(), std::ios::binary);
+    std::ofstream outFile;
 
-    std::cout << "Generating keys..." << std::endl;
-    std::list<std::string> keyList;
-    for (char character : key) {
-        keyList.push_back(std::bitset<8>(character).to_string());
+    if (threads == 0) {
+        return;
     }
-    std::string derivedKey = str.hash(keyList, 256);
-    BinNum passableKey(derivedKey, 256, 16);
-    std::vector<BinNum> keys = crypter.keyScheduler(passableKey);
-    std::cout << "Done." << std::endl;
 
-    if (typeid(crypter) == typeid(Magma())) {
+    if (typeid(crypter) == typeid(Magma)) {
         blockSize = 8;
     }
     else {
         blockSize = 16;
     }
 
+    // determine file types, names, etc.
+    std::string inTarCpy = inputTar;
+    std::reverse(inTarCpy.begin(), inTarCpy.end());
+    std::string fileName = inTarCpy.substr(0, inTarCpy.find("/"));
+    std::reverse(fileName.begin(), fileName.end());
+    if (encOrDec) {
+        // encrypting
+        // grab filename
+        if (blockSize == 16) {
+            fileName += ".kuz-ecb";
+            std::cout << "This implementation of Kuznyechik is slow (~5.5 bytes/s)." << std::endl;
+            std::cout << "Please be patient or reconsider its use for large files." << std::endl;
+        }
+        else {
+            fileName += ".mag-ecb";
+        }
+        std::string outFileFullPath = outputTar + fileName;
+        outFile.open(outFileFullPath.c_str(), std::ios::binary);
+    }
+    else {
+        fileName = fileName.substr(0, fileName.length() - 8); // corto always uses 8 characters including . for filetypes
+        outFile.open((outputTar + fileName).c_str(), std::ios::binary);
+    }
+
+    if (!outFile.good()) {
+        std::cout << "Unable to open output file. Ensure appropriate write permissions exist." << std::endl;
+        return;
+    }
+
+    std::cout << "Generating keys..." << std::endl;
+    std::list<std::string> keyList;
+    for (char character : key) {
+        keyList.push_back(std::bitset<8>(character).to_string());
+    }
+    std::string derivedKey = str.hash(keyList, 256);
+    BinNum passableKey(derivedKey, 256, 16);
+    std::vector<BinNum> keys = crypter.keyScheduler(passableKey);
+    std::cout << "Keys generating. Operating..." << std::endl;
     if (inFile.good()) {
-        // read in N blocks (if possible)
-        auto out = std::string();
-        auto buf = std::string(blockSize, '\0');
-        while (inFile.read(&buf[0], blockSize)) {
-            // reads in a single block
-            if (inFile.gcount() < blockSize) {
-                // if block < blockSize, pad
-                buf = buf.substr(0, inFile.gcount());
-                std::string myStr("\0", blockSize - inFile.gcount());
-                buf = buf + myStr;
+        std::vector<std::string> buf;
+        char byte;
+        while (inFile.get(byte)) {
+            buf.push_back(std::bitset<8>(byte).to_string());
+            if (inFile.peek() == EOF && buf.size() != blockSize) {
+                for (uint32_t i = 0; i < blockSize - buf.size() + 2; ++i) {
+                    buf.push_back(std::bitset<8>('\0').to_string());
+                }
             }
-            // buf contains blockSize bytes
-            // ********************************************************************************
-            // MUST CONVERT TO BINNUM
-            // blocks.push_back(buf);
-
-
-
-            ++blockCtr;
-            if (++blockCtr == 0 && typeid(crypter) == typeid(Magma())) {
+            // check block count (birthday paradox rekey prompt for Magma)
+            // (~30GB, several thousand PB for Kuznyechik so no check)
+            if (blockCtr == UINT32_MAX && blockSize == 8) {
                 std::string newKey;
-                std::cout << "Magma block encryption limit hit. Please rekey to continue.\nNew key: " << std::endl;
+                std::cout << "Magma block limit hit. Please rekey to continue.\nNew key: " << std::endl;
                 std::cin >> newKey;
                 keyList.clear();
                 for (char character : newKey) {
@@ -415,47 +586,71 @@ void ecb(const T& crypter, uint32_t threads, bool encOrDec, std::string key, std
                 keys = crypter.keyScheduler(passableKey);
                 blockCtr = 0;
             }
-            // push block back
-            if (blocks.size() == threads || inFile.gcount() < blockSize) {
-                std::vector<BinNum> results(blocks.size());
+            // check if we've formed a full block
+            if (buf.size() == blockSize) {
+                // concat vector
+                std::string toBinNum;
+                for (std::string curByte : buf) {
+                    toBinNum += curByte;
+                }
+                // push back now complete block into block container
+                blocks.push_back(BinNum(toBinNum, blockSize * 8));
+                buf.clear();
+                ++blockCtr;
+            }
+            // if all threads can be occupied or EOF, run it
+            if (blocks.size() == threads || inFile.peek() == EOF) {
+                std::vector<BinNum> results;
+                results.reserve(blocks.size());
+                results.resize(blocks.size(), BinNum("0", 1));
                 for (uint32_t i = 0; i < blocks.size(); ++i) {
+                    // lambdas for function call parity w/ PBR in threads
                     if (encOrDec) {
-                        threadPool.push_back(std::thread(&T::threadEncrypt, keys, blocks[i], i, std::ref(results), std::ref(mtx)));
+                        threadPool.push_back(std::thread([&crypter, keys, blocks, i, &results, &mtx]() {
+                            crypter.threadEncrypt(keys, blocks[i], i, results, mtx);
+                            }));
                     }
                     else {
-                        threadPool.push_back(std::thread(&T::threadDecrypt, keys, blocks[i], i, std::ref(results), std::ref(mtx)));
+                        threadPool.push_back(std::thread([&crypter, keys, blocks, i, &results, &mtx]() {
+                            crypter.threadDecrypt(keys, blocks[i], i, results, mtx);
+                            }));
                     }
                 }
-                for (std::thread thread : threadPool) {
-                    thread.join();
+                for (uint32_t i = 0; i < threadPool.size(); ++i) {
+                    threadPool[i].join();
                 }
                 threadPool.clear();
+                std::cout << "Writing blocks " << blockCtr - blockSize << "-" << blockCtr << "..." << std::endl;
                 for (auto data : results) {
-                    // ********************************************************************************
-                    // MUST CONVERT FROM BINNUM (1 or 2 uint64_t values)
-                    // outFile << data;
-
-
-
-
+                    // once a thread cycle is completely ran, output the data
+                    if (blockSize == 8) {
+                        uint64_t value = std::stoull(data.getVal(), nullptr, 2);
+                        unsigned char bytes[8];
+                        for (uint32_t i = 0; i < sizeof(value); ++i) {
+                            bytes[i] = (value >> ((7 - i) * 8)) & 0xFF;
+                        }
+                        for (int i = 0; i < 8; ++i) {
+                            outFile << bytes[i];
+                        }
+                    }
+                    else {
+                        uint64_t val1 = std::stoull(data.getVal().substr(0, 64), nullptr, 2);
+                        uint64_t val2 = std::stoull(data.getVal().substr(64, 64), nullptr, 2);
+                        unsigned char bytes[16];
+                        for (uint32_t i = 0; i < sizeof(val1); ++i) {
+                            bytes[i] = (val1 >> ((7 - i) * 8)) & 0xFF;
+                        }
+                        for (uint32_t i = 0; i < sizeof(val2); ++i) {
+                            bytes[i + 8] = (val2 >> ((7 - i) * 8)) & 0xFF;
+                        }
+                        for (uint32_t i = 0; i < 16; ++i) {
+                            outFile << bytes[i];
+                        }
+                    }
                 }
+                blocks.clear();
             }
         }
-        // append filetype at the end, close outFile
-        std::string endBlock;
-        for (unsigned char character : fileExtension) {
-            endBlock.push_back(character);
-        }
-        while (endBlock.size() % (blockSize * 8) != 0) {
-
-
-
-
-            // need to pad with PRNG bytes
-            // doesn't need to be CSPRNG since max 15 bytes (one char filetype) < state size of say, MT19937 seeded w/ MSB hashed key
-            endBlock.push_back('\0');
-        }
-        outFile << endBlock;
         outFile.close();
     }
     else {
@@ -463,7 +658,10 @@ void ecb(const T& crypter, uint32_t threads, bool encOrDec, std::string key, std
     }
 }
 
-
+// printInfo()
+// PRE: Called
+// POST: Usage information outputted
+// WARNINGS: None
 void printHelp() {
     std::cout << "-------------------------------" << std::endl;
     std::cout << "Corto - General Help" << std::endl;
@@ -478,9 +676,9 @@ void printHelp() {
     std::cout << "-------------------------------" << std::endl;
     std::cout << "Corto - Cipher Help" << std::endl;
     std::cout << "-------------------------------" << std::endl;
-    std::cout << "Usage: ./Corto -[kuz/mag] -[cbc/ecb=N] -[e/d] -k=\"<KEY_HERE>\" -tgt=\"<ENC_TRGT_PTH>\" -out=\"<OUTPUT_PTH>" << std::endl;
+    std::cout << "Usage: ./Corto -[kuz/mag] -[cbc/ecb=N] -[e/d] -k=\"<KEY_HERE>\" -tgt=\"<ENC_TRGT_PTH>\" -out=\"<OUTPUT_PTH>\"" << std::endl;
     std::cout << "-[kuz/mag]\t\t\t- Denotes Kuznyechik (*.kuz) or Magma (*.mag) operation." << std::endl;
-    std::cout << "-[cbc/ebc=N]\t\t\t- Denotes block cipher mode of operation. Uses N threads if EBC is selected." << std::endl;
+    std::cout << "-[cbc/ecb=N]\t\t\t- Denotes block cipher mode of operation. Uses N threads if ECB is selected." << std::endl;
     std::cout << "-[e/d]\t\t\t\t- Denotes encrypt or decrypt operation." << std::endl;
     std::cout << "-k=\"<KEY_HERE>\"\t\t\t- Key for operation provided in quotes." << std::endl;
     std::cout << "-tgt=\"<ENC_TRGT_PTH>\"\t\t- Path to file targeted for encryption in quotes." << std::endl;
@@ -504,28 +702,34 @@ void printHelp() {
     std::cout << "For additional information, please view the information card via -i or the README at" << std::endl;
     std::cout << "https://github.com/1nfocalpyse/Corto" << std::endl;
 }
+
+// printInfo()
+// PRE: Called
+// POST: Information outputted
+// WARNINGS: None
 void printInfo() {
-    std::cout << "                      ______           __      "                      << std::endl;
-    std::cout << "                     / ____/___  _____/ /_____ "                      << std::endl;
-    std::cout << "                    / /   / __ \\/ ___/ __/ __ \\"                    << std::endl;
-    std::cout << "                   / /___/ /_/ / /  / /_/ /_/ /"                      << std::endl;
-    std::cout << "                   \\____/\\____/_/   \\__/\\____/ "                  << std::endl;
-    std::cout << "******************************************************************"   << std::endl;
-    std::cout << "      Written by 1nfocalypse. https://github.com/1nfocalypse"         << std::endl;
-    std::cout << "******************************************************************"   << std::endl;
-    std::cout << "Corto is a complete implementation of the Russian Federation's "      << std::endl;
-    std::cout << "GOST cryptographic standards, to include GOST R 34.11-2012 "          << std::endl;
-    std::cout << "\"Streebog\" and GOST R 34.12 - 2015 \"Kuznyechik\" and \"Magma\"."   << std::endl;
-    std::cout << "Streebog is a 256 and 512 bit cryptographic hash, with Corto"         << std::endl;
-    std::cout << "supporting both file and string literal inputs. Kuznyechik is"        << std::endl;
-    std::cout << "a SP-Net based 128 bit block cipher occurring over 10 rounds,"        << std::endl;
-    std::cout << "while Magma is a Feistel Network based 64 bit block cipher"           << std::endl;
-    std::cout << "that utilizes 32 rounds and a substition-rotation round function."    << std::endl;
-    std::cout << "Both ciphers utilize 256 bit keys. All functions are considered"      << std::endl;
-    std::cout << "cryptographically weak compared to other available systems, but"      << std::endl;
-    std::cout << "are still in use and officially supported by the Russian Federation." << std::endl;
-    std::cout << "******************************************************************"   << std::endl;
-    std::cout << "The Corto project is licensed under the MIT license."                 << std::endl;
-    std::cout << "For more information, please consult the repo available at"           << std::endl;
-    std::cout << "https://github.com/1nfocalpyse/Corto"                                 << std::endl;
+    std::cout << "                      ______           __      "                                  << std::endl;
+    std::cout << "                     / ____/___  _____/ /_____ "                                  << std::endl;
+    std::cout << "                    / /   / __ \\/ ___/ __/ __ \\"                                << std::endl;
+    std::cout << "                   / /___/ /_/ / /  / /_/ /_/ /"                                  << std::endl;
+    std::cout << "                   \\____/\\____/_/   \\__/\\____/ "                              << std::endl;
+    std::cout << "*******************************************************************    "          << std::endl;
+    std::cout << "      Written by 1nfocalypse. https://github.com/1nfocalypse      *    "          << std::endl;
+    std::cout << "*******************************************************************    "          << std::endl;
+    std::cout << "Corto is a complete implementation of the Russian Federation's    *    "          << std::endl;
+    std::cout << "GOST cryptographic standards, to include GOST R 34.11-2012        *    "          << std::endl;
+    std::cout << "\"Streebog\" and GOST R 34.12 - 2015 \"Kuznyechik\" and \"Magma\".\t  *"          << std::endl;
+    std::cout << "Streebog is a 256 and 512 bit cryptographic hash, with Corto      *    "          << std::endl;
+    std::cout << "supporting both file and string literal inputs. Kuznyechik is     *    "          << std::endl;
+    std::cout << "a SP-Net based 128 bit block cipher occurring over 10 rounds,     *    "          << std::endl;
+    std::cout << "while Magma is a Feistel Network based 64 bit block cipher        *    "          << std::endl;
+    std::cout << "that utilizes 32 rounds and a substition-rotation round function. *    "          << std::endl;
+    std::cout << "Both ciphers utilize 256 bit keys. All functions are considered   *    "          << std::endl;
+    std::cout << "cryptographically weak compared to other available systems, but   *    "          << std::endl;
+    std::cout << "are still in use and officially supported by the Russian          *    "          << std::endl;
+    std::cout << "Federation.                                                       *    "          << std::endl;
+    std::cout << "*******************************************************************    "          << std::endl;
+    std::cout << "The Corto project is licensed under the MIT license."                             << std::endl;
+    std::cout << "For more information, please consult the repo available at"                       << std::endl;
+    std::cout << "https://github.com/1nfocalpyse/Corto"                                             << std::endl;
 }

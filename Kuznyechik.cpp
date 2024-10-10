@@ -3,14 +3,10 @@
 #include <stdexcept>
 #include <bitset>
 #include <vector>
+#include <chrono>
 #include "Kuznyechik.h"
 #include "BinNum.h"
-
-// TO DO
-// Implement E_k, D_k
-// test and verify integrity
-// debug
-// link to Corto body
+#include "KuzFunctor.h"
 
 BinNum Kuznyechik::sBox(BinNum number) {
     unsigned int transformMatrix[] = {
@@ -141,17 +137,20 @@ uint8_t Kuznyechik::kuzMult(uint8_t x, uint8_t y) {
     BinNum modulus("111000011", 128); // 111000011 -> x^7 + x^6 + x^5 + x + 1
     BinNum retVal = modBinPolys(toMod, modulus);
     // convert BinNum to uint8
-    uint8_t castRetVal = std::stoul(retVal.getVal(10)) & 0xFF;
+    uint8_t castRetVal = std::stoul(retVal.getVal(), nullptr, 2) & 0xFF;
     return castRetVal;
 }
 
 BinNum Kuznyechik::multBinPolys(BinNum x, BinNum y) {
-    if (x.getVal(10) == "0" || y.getVal(10) == "0") {
-        return BinNum("0", 128);
+    BinNum zero128("0", 128);
+    if (x == zero128 || y == zero128) {
+        return zero128;
     }
+    BinNum condConst("0", 128);
     BinNum retNum("0", 128);
-    while (x.getVal(10) != "0") {
-        if ((x & BinNum("1", 128)) == BinNum("1", 128)) {
+    BinNum loopCst("1", 128);
+    while (x != condConst) {
+        if ((x & loopCst) == loopCst) {
             retNum = retNum ^ y;
         }
         y = y << 1;
@@ -163,7 +162,6 @@ BinNum Kuznyechik::multBinPolys(BinNum x, BinNum y) {
     #pragma warning(pop)
 }
 
-// infinite loop because nb1 is not updating?
 BinNum Kuznyechik::modBinPolys(BinNum x, BinNum y) {
     uint8_t numBits = curBits(y);
     while (1) {
@@ -180,15 +178,6 @@ uint8_t Kuznyechik::curBits(BinNum number) {
     uint8_t retNum = 0;
     BinNum zero128("0", 128);
     while (number != zero128) {
-        ++retNum;
-        number = number >> 1;
-    }
-    return retNum;
-}
-
-uint8_t Kuznyechik::curBits(uint8_t number) {
-    uint8_t retNum = 0;
-    while (number != 0) {
         ++retNum;
         number = number >> 1;
     }
@@ -218,12 +207,7 @@ std::vector<BinNum> Kuznyechik::keyScheduler(BinNum number) {
     return keys;
 }
 
-std::vector<BinNum> Kuznyechik::keyScheduler(BinNum number) const {
-    return keyScheduler(number);
-}
-
-BinNum Kuznyechik::test_encrypt(BinNum plaintext, BinNum key) {
-    std::vector<BinNum> keys = keyScheduler(key);
+BinNum Kuznyechik::encrypt(BinNum plaintext, std::vector<BinNum> keys) {
     BinNum ptCopy(plaintext);
     for (uint32_t i = 0; i < 9; ++i) {
         ptCopy = pBoxWrapper(sBox(ptCopy ^ keys[i]));
@@ -231,8 +215,7 @@ BinNum Kuznyechik::test_encrypt(BinNum plaintext, BinNum key) {
     return ptCopy ^ keys.back();
 }
 
-BinNum Kuznyechik::test_decrypt(BinNum ciphertext, BinNum key) {
-    std::vector<BinNum> keys = keyScheduler(key);
+BinNum Kuznyechik::decrypt(BinNum ciphertext, std::vector<BinNum> keys) {
     BinNum ctCopy(ciphertext);
     std::reverse(keys.begin(), keys.end());
     for (uint32_t i = 0; i < 9; ++i) {
@@ -241,6 +224,19 @@ BinNum Kuznyechik::test_decrypt(BinNum ciphertext, BinNum key) {
     return ctCopy ^ keys.back();
 }
 
+void Kuznyechik::threadEncrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum>& results, std::mutex& mtx) {
+    mtx.lock();
+    results[retIndex] = encrypt(tarBlock, keys);
+    mtx.unlock();
+}
+
+void Kuznyechik::threadDecrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum>& results, std::mutex& mtx) {
+    mtx.lock();
+    results[retIndex] = decrypt(tarBlock, keys);
+    mtx.unlock();
+}
+
+
 void Kuznyechik::verify() const {
-    std::cout << "not implemented" << std::endl;
+    KuzFunctor()();
 }

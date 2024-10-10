@@ -1,7 +1,9 @@
 #include "Magma.h"
+#include "MagFunctor.h"
 #include <bitset>
 #include <iostream>
 #include <algorithm>
+#include <mutex>
 
 uint32_t Magma::substitution(uint32_t value) {
 	uint64_t y = 0;
@@ -41,28 +43,6 @@ uint64_t Magma::join(uint32_t left, uint32_t right) {
 	return leftCpy;
 }
 
-
-// this has to be modified
-// to support BinNum vectors, otherwise won't work with Corto
-/*
-std::vector<uint32_t> Magma::keyScheduler(BinNum key) {
-	std::vector<uint32_t> keys;
-	BinNum lsbMask32("FFFFFFFF", 256, 16);
-	for (int i = 7; i >= 0; --i) {
-		keys.push_back(std::stoul(((key >> (32 * i)) & lsbMask32).getVal(), nullptr, 2));
-	}
-	for (uint32_t i = 0; i < 2; ++i) {
-		for (uint32_t j = 0; j < 8; ++j) {
-			keys.push_back(keys[j]);
-		}
-	}
-	for (int i = 7; i >= 0; --i) {
-		keys.push_back(keys[i]);
-	}
-	return keys;
-}
-*/
-
 std::vector<BinNum> Magma::keyScheduler(BinNum key) {
 	std::vector<BinNum> keys;
 	BinNum lsbMask32("FFFFFFFF", 256, 16);
@@ -77,46 +57,66 @@ std::vector<BinNum> Magma::keyScheduler(BinNum key) {
 	for (int i = 7; i >= 0; --i) {
 		keys.push_back(keys[i]);
 	}
+	// resize all keys
+	for (uint32_t i = 0; i < keys.size(); ++i) {
+		keys[i] = BinNum(keys[i].getVal().substr(256 - 32, 32));
+	}
+	// should now all be 32 bits
 	return keys;
 }
 
-std::vector<BinNum> Magma::keyScheduler(BinNum key) const {
-	return keyScheduler(key);
+void Magma::threadEncrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum>& results, std::mutex& mtx) {
+	mtx.lock();
+	results[retIndex] = encrypt(tarBlock, keys);
+	mtx.unlock();
 }
 
-// make threadEncrypt for magma and kuznyechik
+void Magma::threadDecrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum>& results, std::mutex& mtx) {
+	mtx.lock();
+	results[retIndex] = decrypt(tarBlock, keys);
+	mtx.unlock();
+}
 
-/*
-uint64_t Magma::test_encrypt(uint64_t plaintext, BinNum key) {
-	std::vector<uint32_t> keys = keyScheduler(key);
-	std::vector<uint32_t> seperated = split(plaintext);
-	// 32 rounds of feistel network
+BinNum Magma::encrypt(BinNum plaintext, std::vector<BinNum> keys) {
+	std::vector<uint32_t> keys32;
+	for (BinNum key : keys) {
+		keys32.push_back(std::stoul(key.getVal(), nullptr, 2));
+	}
+	uint64_t block = std::stoull(plaintext.getVal(), nullptr, 2);
+	std::vector<uint32_t> seperated = split(block);
 	uint32_t left = seperated[0];
 	uint32_t right = seperated[1];
 	for (uint32_t i = 0; i < 31; ++i) {
 		uint32_t newL = right;
-		uint32_t newR = left ^ rotation(right, keys[i]);
+		uint32_t newR = left ^ rotation(right, keys32[i]);
 		left = newL;
 		right = newR;
 	}
-	return join(left ^ rotation(right, keys[31]), right);
+	uint64_t resultingEnc64 = join(left ^ rotation(right, keys32[31]), right);
+	return BinNum(std::bitset<64>(resultingEnc64).to_string());
 }
 
-uint64_t Magma::test_decrypt(uint64_t ciphertext, BinNum key) {
-	std::vector<uint32_t> keys = keyScheduler(key);
-	std::vector<uint32_t> seperated = split(ciphertext);
-	std::reverse(keys.begin(), keys.end());
+BinNum Magma::decrypt(BinNum ciphertext, std::vector<BinNum> keys) {
+	std::vector<uint32_t> keys32;
+	for (BinNum key : keys) {
+		keys32.push_back(std::stoul(key.getVal(), nullptr, 2));
+	}
+	uint64_t block = std::stoull(ciphertext.getVal(), nullptr, 2);
+	std::vector<uint32_t> seperated = split(block);
+	std::reverse(keys32.begin(), keys32.end());
 	uint32_t left = seperated[0];
 	uint32_t right = seperated[1];
 	for (uint32_t i = 0; i < 31; ++i) {
 		uint32_t newL = right;
-		uint32_t newR = left ^ rotation(right, keys[i]);
+		uint32_t newR = left ^ rotation(right, keys32[i]);
 		left = newL;
 		right = newR;
 	}
-	return join(left ^ rotation(right, keys[31]), right);
-}*/
+	uint64_t resultingDec64 = join(left ^ rotation(right, keys32[31]), right);
+	return BinNum(std::bitset<64>(resultingDec64).to_string());
+}
+
 
 void Magma::verify() const {
-	std::cout << "Not implemented." << std::endl;
+	MagFunctor()();
 }

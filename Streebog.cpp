@@ -1,4 +1,5 @@
 #include "Streebog.h"
+#include "StrFunctor.h"
 #include <string>
 #include <bitset>
 #include <stdexcept>
@@ -7,7 +8,6 @@
 
 // consider processing as hexadecimal strings instead of binary
 
-// instrumented for testing -> testing blocks will be seperated out by spaces and ***** bars
 std::string Streebog::hash(std::list<std::string> cleartext, int size) {
 	if (size != 512 && size != 256) {
 		throw std::invalid_argument("Passed invalid hash size. Must be 512 or 256.");
@@ -74,7 +74,6 @@ std::string Streebog::hash(std::list<std::string> cleartext, int size) {
 	}
 }
 
-// seems correct
 BinNum Streebog::sBox(BinNum number) const { // S in Stree spec
 	BinNum mask("FF", 512, 16);
 	mask = mask << 504;
@@ -90,20 +89,17 @@ BinNum Streebog::sBox(BinNum number) const { // S in Stree spec
 	return BinNum(curStr, 512);
 }
 
-// we take a 256 bit input
+// we take a 512 bit input
 // for each iteration, we append the result of 
-// accessing the 256 bit input at the tau[i]'th byte
+// accessing the 512 bit input at the tau[i]'th byte
 BinNum Streebog::pBox(BinNum number) const { // P in Stree spec
 	std::string curStr;
-
-	uint8_t tmpArr[64];
 
 	for (uint8_t i = 0; i < 64; ++i) {
 		uint32_t byteNum = this->tau[i];
 		uint32_t accessPoint = byteNum * 8;
 		std::string subString = number.getVal().substr(accessPoint, 8);
 		curStr.append(subString);
-		tmpArr[i] = static_cast<uint8_t>(std::stoul((subString), nullptr, 2));
 	}
 	return BinNum(curStr, 512);
 }
@@ -200,5 +196,5 @@ BinNum Streebog::getInitKey() const {
 }
 
 void Streebog::verify() const {
-	std::cout << "Not implemented." << std::endl;
+	StrFunctor()();
 }

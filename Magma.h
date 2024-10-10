@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <mutex>
 #include "BinNum.h"
 
 /*
@@ -37,6 +38,7 @@
 
 class Magma
 {
+	friend class MagFunctor;
 private:
 	uint64_t pi[8][16] = {
 		{12, 4, 6, 2, 10, 5, 11, 9, 14, 8, 13, 7, 0, 3, 15, 1},
@@ -48,32 +50,67 @@ private:
 		{8, 14, 2, 5, 6, 9, 1, 12, 15, 4, 11, 0, 13, 10, 3, 7},
 		{1, 7, 14, 13, 0, 5, 8, 3, 4, 15, 10, 6, 9, 12, 11, 2}
 	};
-public:
 
+	// substitution(uint32_t value)
+	// PRE: 32 bit unsigned integer passed
+	// POST: Substitutes each nibble according to S box pi
+	// WARNINGS: None
 	uint32_t substitution(uint32_t value);
 
+	// rotation(uint32_t x, uint32_t k)
+	// PRE: 2 32 bit uint32_t passed
+	// POST: performs round function (binary rot11) and s box for each block
+	// WARNINGS: None
 	uint32_t rotation(uint32_t x, uint32_t k);
 
+	// split(uint64_t value)
+	// PRE: 64 bit unsigned integer passed
+	// POST: Vector of 2 uint32_t returned, first being the MSB and second being the LSB
+	// WARNINGS: None
 	std::vector<uint32_t> split(uint64_t value);
 
+	// join(uint32_t left, uint32_t right)
+	// PRE: 2 32 bit uint32_t passed
+	// POST: 64 bit int returned, left being MSB and right being LSB
+	// WARNINGS: None
 	uint64_t join(uint32_t left, uint32_t right);
 
+public:
 
-
-
-	// std::vector<uint32_t> keyScheduler(BinNum key);
-	std::vector<BinNum> keyScheduler(BinNum key) const;
-
+	// keyScheduler(BinNum key)
+	// PRE: 256 bit BinNum provided as key
+	// POST: 32 keys returned in vector as BinNums
+	// WARNINGS: None
 	std::vector<BinNum> keyScheduler(BinNum key);
 
-	/*uint64_t test_encrypt(uint64_t plaintext, BinNum key);
+	// threadEncrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum> &results, std::mutex &mtx)
+	// PRE: keys generated from keyScheduler, target block, the index of where to store the results, a reference to the results vector, and a referenced mutex passed
+	// POST: Applies result of encryption to results[retIndex]
+	// WARNINGS: None
+	void threadEncrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum> &results, std::mutex &mtx);
 
-	uint64_t test_decrypt(uint64_t ciphertext, BinNum key);*/
+	// threadEncrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum> &results, std::mutex &mtx)
+	// PRE: keys generated from keyScheduler, target block, the index of where to store the results, a reference to the results vector, and a referenced mutex passed
+	// POST: Applies result of decryption to results[retIndex]
+	// WARNINGS: None
+	void threadDecrypt(std::vector<BinNum> keys, BinNum tarBlock, uint32_t retIndex, std::vector<BinNum>& results, std::mutex &mtx);
 
-	BinNum threadEncrypt();
+	// encrypt(BinNum plaintext, std::vector<BinNum> keys)
+	// PRE: 64 bit BinNum, keys passed
+	// POST: 64 bit BinNum ciphertext returned
+	// WARNINGS: None
+	BinNum encrypt(BinNum plaintext, std::vector<BinNum> keys);
 
-	BinNum threadDecrypt();
+	// decrypt(BinNum ciphertext, std::vector<BinNum> keys)
+	// PRE: 64 bit BinNum, keys passed
+	// POST: 64 bit BinNum cleartext returned
+	// WARNINGS: None
+	BinNum decrypt(BinNum ciphertext, std::vector<BinNum> keys);
 
+	// verify() const
+	// PRE: Verification argument provided
+	// POST: Calls verification functor, demonstrating compliance with GOST R 34.12-2015 testing standards.
+	// WARNINGS: None
 	void verify() const;
 };
 
