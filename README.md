@@ -22,7 +22,8 @@ It allows the user to encrypt data with the block ciphers in either CBC or multi
 by the Russian Federation, and are thus of interest. For usage information, please see [usage](#usage). Additionally, please note that while this implementation meets the standards and tests set forth in the specifications, it has not been peer reviewed, and thus may contain errors.
 
 ## Ciphers
-Both ciphers are able to operate in multithreaded ECB mode (where each block is treated as independent) or iterative CBC mode (where the result of the previous block is XOR'd with the incoming data for the current block). 
+Both ciphers are able to operate in multithreaded ECB mode (where each block is treated as independent) or iterative CBC mode (where the result of the previous block is XOR'd with the incoming data for the current block). CBC nonces require RDRAND support and are prepended in clear at the front of the file. CBC will not run if 
+the RDRAND instruction is not supported.
 ### Kuznyechik
 Kuznyechik is the newest cipher to be adopted by the Russian Federation, first being established in 2015. It is based on a Substitution Permutation network, similar to Rijndael, but utilizes a Feistel Network for key generation, thus obtaining better diffusion at the cost
 of markedly slower key generation. It utilizes a block size of 128 bits, twice that of it's predecessor, Magma (otherwise previously known as GOST), with the same key size of 256 bits and 10 rounds. The standard maintains a number of transformations, which are as follows:
